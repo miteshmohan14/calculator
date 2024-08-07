@@ -1,0 +1,56 @@
+trigger:
+  branches:
+    include:
+      - '*'
+pool:
+  name: calc-agent
+stages:
+  - stage: Build
+    displayName: 'Build stage'
+    jobs:
+      - job: Build
+        displayName: 'Build job'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+            displayName: 'Install Node.js'
+
+          - script: |
+              npm install
+              npm test -- --watchAll=false
+              npm run build
+            displayName: 'Install dependencies, run tests, and build'
+
+          - task: CopyFiles@2
+            inputs:
+              contents: 'build/**'
+              targetFolder: '$(Build.ArtifactStagingDirectory)'
+            displayName: 'Copy build files'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'drop'
+            displayName: 'Publish build artifacts'
+
+  - stage: Deploy
+    displayName: 'Deploy stage'
+    dependsOn: Build
+    jobs:
+      - job: Deploy
+        displayName: 'Deploy job'
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifactName: 'drop'
+              targetPath: '$(Pipeline.Workspace)/drop'
+            displayName: 'Download Build Artifacts'
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'calc-conn'
+              appName: 'Calculateonline'
+              package: '$(Pipeline.Workspace)/drop/build'
+              appType: 'webApp'
+            displayName: 'Deploy to Azure Web App'
