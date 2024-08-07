@@ -3,7 +3,7 @@ trigger:
     include:
       - '*'
 pool:
-  name: calc-agent
+  name: Calculator
 stages:
   - stage: Build
     displayName: 'Build stage'
